@@ -74,3 +74,72 @@ TEST_CASE("Example: Print Prompt Ledger", "[ex-3]") {
   atm.PrintLedger("./prompt.txt", 12345678, 1234);
   REQUIRE(CompareFiles("./ex-1.txt", "./prompt.txt"));
 }
+
+TEST_CASE("Duplicate fail", "[ex-4]") {
+
+  Atm atm;
+  atm.RegisterAccount(10000001, 1001, "A", 10.0);
+
+  REQUIRE_THROWS_AS(atm.RegisterAccount(10000001, 1001, "A", 99.0), std::invalid_argument);
+}
+
+TEST_CASE("WithdrawCash negative and overdraft", "[ex-5]") {
+  
+  Atm atm;
+  atm.RegisterAccount(10000002, 1002, "B", 50.0);
+
+  REQUIRE_THROWS_AS(atm.WithdrawCash(10000002, 1002, -5.0), std::invalid_argument);
+  REQUIRE_THROWS_AS(atm.WithdrawCash(10000002, 1002, 60.0), std::runtime_error);
+
+  auto accounts = atm.GetAccounts();
+
+  REQUIRE(accounts[{10000002, 1002}].balance == 50.0);
+}
+
+TEST_CASE("DepositCash negative", "[ex-6]") {
+
+  Atm atm;
+
+  atm.RegisterAccount(10000003, 1003, "C", 0.0);
+  REQUIRE_THROWS_AS(atm.DepositCash(10000003, 1003, -0.01), std::invalid_argument);
+}
+
+TEST_CASE("Invalid credentials deposit/withdraw", "[ex-7]") {
+
+  Atm atm;
+
+  REQUIRE_THROWS_AS(atm.DepositCash(99999999, 9999, 5.0), std::invalid_argument);
+  REQUIRE_THROWS_AS(atm.WithdrawCash(99999999, 9999, 5.0), std::invalid_argument);
+}
+
+TEST_CASE("PrintLedger NE account", "[ex-8]") {
+  Atm atm;
+
+  REQUIRE_THROWS_AS(atm.PrintLedger("./nope.txt", 42424242, 4242), std::invalid_argument);
+}
+
+TEST_CASE("Transactions logged", "[ex-9]") {
+
+  Atm atm;
+  atm.RegisterAccount(10000004, 1004, "D", 100.0);
+
+  atm.DepositCash(10000004, 1004, 25.0);
+  atm.WithdrawCash(10000004, 1004, 10.0);
+
+  auto& tx = atm.GetTransactions();
+  REQUIRE(tx.count({10000004, 1004}) == 1);
+  REQUIRE(tx[{10000004, 1004}].size() == 2);
+
+}
+
+TEST_CASE("DepositCash adds", "[ex-10]") {
+
+  Atm atm;
+  atm.RegisterAccount(77777777, 7777, "Grace", 10.0);
+
+  atm.DepositCash(77777777, 7777, 25.0); 
+
+  auto accounts = atm.GetAccounts();
+  REQUIRE(accounts[{77777777, 7777}].balance == Approx(35.0));
+
+}
